@@ -2,7 +2,7 @@
 from homeassistant.const import Platform
 
 DOMAIN = "zentraly"
-PLATFORMS = [Platform.CLIMATE]
+PLATFORMS = [Platform.CLIMATE, Platform.BINARY_SENSOR]
 
 # API
 API_BASE_URL = "https://ztprdrestservicesv2.azurewebsites.net"

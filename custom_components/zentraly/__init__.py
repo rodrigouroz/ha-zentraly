@@ -11,7 +11,7 @@ from homeassistant.helpers import aiohttp_client
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .api import ZentralyApi, ZentralyApiError
-from .const import DOMAIN, PLATFORMS, SCAN_INTERVAL_SECONDS
+from .const import DEVICE_TYPE_THERMOSTAT, DOMAIN, PLATFORMS, SCAN_INTERVAL_SECONDS
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -34,11 +34,34 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         return False
 
     async def async_update_data():
-        """Fetch data from API."""
+        """Fetch device data, enriched with the real relay state."""
         try:
-            return await api.get_devices()
+            devices = await api.get_devices()
         except ZentralyApiError as err:
             raise UpdateFailed(f"Error communicating with Zentraly API: {err}") from err
+
+        # Augment each connected thermostat with the real burner relay state
+        # (``output`` from getConfig) so hvac_action / binary_sensor reflect
+        # whether the boiler is actually firing.
+        for device in devices:
+            if (
+                device.get("device_type") != DEVICE_TYPE_THERMOSTAT
+                or not device.get("serial")
+                or not device.get("connected", False)
+            ):
+                continue
+            try:
+                live = await api.get_live_state(device["serial"])
+                device["output"] = live.get("output")
+            except ZentralyApiError as err:
+                _LOGGER.debug(
+                    "Could not read live relay state for %s: %s",
+                    device.get("serial"),
+                    err,
+                )
+                device["output"] = None
+
+        return devices
 
     coordinator = DataUpdateCoordinator(
         hass,

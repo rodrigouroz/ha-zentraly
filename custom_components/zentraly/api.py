@@ -246,6 +246,22 @@ class ZentralyApi:
             {"ids": CONFIG_IDS}
         )
 
+    async def get_live_state(self, device_serial: str) -> dict[str, Any]:
+        """Return the live device config flattened to a single dict.
+
+        ``getConfig`` returns ``ioData.ids`` as a list of single-key dicts,
+        e.g. ``[{"targetTemp": 1801}, {"output": 0}, ...]``. ``output`` is the
+        real relay/burner state (0 = idle, >=1 = firing) read directly from the
+        device, rather than inferred from temperature vs. setpoint.
+        """
+        raw = await self.get_device_config(device_serial)
+        flat: dict[str, Any] = {}
+        ids = raw.get("ids", []) if isinstance(raw, dict) else []
+        for item in ids:
+            if isinstance(item, dict):
+                flat.update(item)
+        return flat
+
     async def set_target_temperature(self, device_serial: str, temperature: float) -> dict[str, Any]:
         """Set target temperature."""
         temp_value = int(temperature * TEMP_SCALE)

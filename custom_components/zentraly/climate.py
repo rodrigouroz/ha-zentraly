@@ -138,19 +138,28 @@ class ZentralyThermostat(CoordinatorEntity, ClimateEntity):
 
     @property
     def hvac_action(self) -> HVACAction | None:
-        """Return current HVAC action."""
-        if data := self._device_data:
-            if not data.get("is_on", False):
-                return HVACAction.OFF
+        """Return current HVAC action.
 
-            current = data.get("current_temperature", 0)
-            target = data.get("target_temperature", 0)
+        Prefers the real relay state (``output`` from getConfig): 1 = the
+        burner is firing, 0 = idle. Falls back to the temperature-vs-setpoint
+        heuristic only when the relay reading is unavailable.
+        """
+        if not (data := self._device_data):
+            return None
 
-            if current < target:
-                return HVACAction.HEATING
-            else:
-                return HVACAction.IDLE
-        return None
+        if self.hvac_mode == HVACMode.OFF:
+            return HVACAction.OFF
+
+        output = data.get("output")
+        if output is not None:
+            return HVACAction.HEATING if output >= 1 else HVACAction.IDLE
+
+        # Fallback heuristic (relay reading unavailable)
+        if not data.get("is_on", False):
+            return HVACAction.OFF
+        current = data.get("current_temperature", 0)
+        target = data.get("target_temperature", 0)
+        return HVACAction.HEATING if current < target else HVACAction.IDLE
 
     @property
     def available(self) -> bool:
