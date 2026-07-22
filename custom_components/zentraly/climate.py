@@ -31,9 +31,31 @@ from .const import (
     HVAC_MODE_MAP,
     HVAC_MODE_REVERSE,
     SCAN_INTERVAL_SECONDS,
+    WEEKDAY_BITS,
 )
 
 _LOGGER = logging.getLogger(__name__)
+
+_WEEKDAY_ORDER = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
+
+
+def _format_schedule(schedules: list[dict] | None) -> list[dict] | None:
+    """Turn the raw device schedule into a readable list."""
+    if not schedules:
+        return schedules
+    formatted = []
+    for block in sorted(schedules, key=lambda b: b.get("startTime", 0)):
+        mask = block.get("days", 0)
+        days = [d for d in _WEEKDAY_ORDER if mask & WEEKDAY_BITS[d]]
+        minutes = block.get("startTime", 0)
+        formatted.append(
+            {
+                "days": days,
+                "start": f"{minutes // 60:02d}:{minutes % 60:02d}",
+                "temperature": block.get("heatSetPoint", 0) / 100,
+            }
+        )
+    return formatted
 
 
 async def async_setup_entry(
@@ -160,6 +182,25 @@ class ZentralyThermostat(CoordinatorEntity, ClimateEntity):
         current = data.get("current_temperature", 0)
         target = data.get("target_temperature", 0)
         return HVACAction.HEATING if current < target else HVACAction.IDLE
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any] | None:
+        """Expose schedule and boiler config read from the device."""
+        if not (data := self._device_data):
+            return None
+        attrs: dict[str, Any] = {}
+        if "schedules" in data:
+            attrs["schedule"] = _format_schedule(data.get("schedules"))
+        for key in (
+            "away_temperature",
+            "heating_water_temp",
+            "dhw_temp",
+            "offset",
+            "locked",
+        ):
+            if data.get(key) is not None:
+                attrs[key] = data[key]
+        return attrs or None
 
     @property
     def available(self) -> bool:

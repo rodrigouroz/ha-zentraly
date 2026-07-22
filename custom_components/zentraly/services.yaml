@@ -1,0 +1,25 @@
+set_schedule:
+  name: Set weekly schedule
+  description: >-
+    Replace the thermostat's weekly heating program. Each block sets a target
+    temperature that applies from its start time until the next block. The whole
+    program is replaced by the blocks you provide.
+  fields:
+    entity_id:
+      name: Thermostat
+      description: A Zentraly climate entity.
+      required: true
+      selector:
+        entity:
+          integration: zentraly
+          domain: climate
+    schedule:
+      name: Schedule blocks
+      description: >-
+        List of blocks. Example: [{days: [mon,tue,wed,thu,fri,sat,sun], start:
+        "00:00", temperature: 19}, {days: [mon,tue,wed,thu,fri,sat,sun], start:
+        "07:45", temperature: 21}]. 'days' accepts weekday names (mon..sun) or an
+        integer bitmask (mon=1, tue=2, wed=4, thu=8, fri=16, sat=32, sun=64).
+      required: true
+      selector:
+        object:
