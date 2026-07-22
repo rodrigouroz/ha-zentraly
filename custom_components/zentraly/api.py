@@ -17,7 +17,10 @@ from .const import (
     AUTH_PREFIX_LOGIN,
     AUTH_PREFIX_TOKEN,
     CMD_GET_CONFIG,
+    CMD_GET_DATES_DEVICE,
+    CMD_GET_OFFSET_TEMP,
     CMD_SET_CONFIG,
+    CMD_SET_OFFSET_TEMP,
     CONFIG_IDS,
     TEMP_SCALE,
 )
@@ -246,6 +249,22 @@ class ZentralyApi:
             {"ids": CONFIG_IDS}
         )
 
+    async def get_live_state(self, device_serial: str) -> dict[str, Any]:
+        """Return the live device config flattened to a single dict.
+
+        ``getConfig`` returns ``ioData.ids`` as a list of single-key dicts,
+        e.g. ``[{"targetTemp": 1801}, {"output": 0}, ...]``. ``output`` is the
+        real relay/burner state (0 = idle, >=1 = firing) read directly from the
+        device, rather than inferred from temperature vs. setpoint.
+        """
+        raw = await self.get_device_config(device_serial)
+        flat: dict[str, Any] = {}
+        ids = raw.get("ids", []) if isinstance(raw, dict) else []
+        for item in ids:
+            if isinstance(item, dict):
+                flat.update(item)
+        return flat
+
     async def set_target_temperature(self, device_serial: str, temperature: float) -> dict[str, Any]:
         """Set target temperature."""
         temp_value = int(temperature * TEMP_SCALE)
@@ -254,6 +273,62 @@ class ZentralyApi:
             CMD_SET_CONFIG,
             {"ids": [{"targetTemp": temp_value}]}
         )
+
+    async def set_away_temperature(self, device_serial: str, temperature: float) -> dict[str, Any]:
+        """Set the 'away' temperature (tAway)."""
+        temp_value = int(temperature * TEMP_SCALE)
+        return await self.send_iot_command(
+            device_serial,
+            CMD_SET_CONFIG,
+            {"ids": [{"tAway": temp_value}]}
+        )
+
+    async def set_lock(self, device_serial: str, locked: bool) -> dict[str, Any]:
+        """Set the child lock."""
+        return await self.send_iot_command(
+            device_serial,
+            CMD_SET_CONFIG,
+            {"ids": [{"lock": 1 if locked else 0}]}
+        )
+
+    async def set_schedule(
+        self, device_serial: str, schedules: list[dict[str, int]]
+    ) -> dict[str, Any]:
+        """Replace the weekly schedule.
+
+        ``schedules`` is a list of blocks, each ``{"days": <bitmask>,
+        "startTime": <minutes from midnight>, "heatSetPoint": <centidegrees>}``.
+        The device stores the whole array, so this replaces the full program.
+        """
+        return await self.send_iot_command(
+            device_serial,
+            CMD_SET_CONFIG,
+            {"ids": [{"schedules": schedules}]}
+        )
+
+    async def get_offset(self, device_serial: str) -> float | None:
+        """Get the temperature calibration offset (°C)."""
+        result = await self.send_iot_command(device_serial, CMD_GET_OFFSET_TEMP, {})
+        if isinstance(result, dict) and result.get("offset") is not None:
+            return result["offset"] / TEMP_SCALE
+        return None
+
+    async def set_offset(self, device_serial: str, offset: float) -> dict[str, Any]:
+        """Set the temperature calibration offset (°C)."""
+        return await self.send_iot_command(
+            device_serial,
+            CMD_SET_OFFSET_TEMP,
+            {"offset": int(offset * TEMP_SCALE)},
+        )
+
+    async def get_device_dates(self, device_serial: str) -> dict[str, Any]:
+        """Get static device metadata (firmware, hardware, IP, MAC, timezone…)."""
+        result = await self.send_iot_command(
+            device_serial, CMD_GET_DATES_DEVICE, {}, timeout=30000
+        )
+        if isinstance(result, dict):
+            return result.get("dates", {}) or {}
+        return {}
 
     async def set_hvac_mode(self, device_serial: str, mode: int) -> dict[str, Any]:
         """Set HVAC mode."""
