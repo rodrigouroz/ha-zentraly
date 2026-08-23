@@ -14,8 +14,8 @@ API_IOT_COMMAND_ENDPOINT = "/IOTCommand/Run"
 AUTH_PREFIX_LOGIN = "ztv2Auth"
 AUTH_PREFIX_TOKEN = "ztv2Token"
 
-# Device types
-DEVICE_TYPE_THERMOSTAT = 2
+# Device types confirmed to expose the thermostat data model
+DEVICE_TYPES_THERMOSTAT = {2, 6}
 
 # Temperature conversion (API uses centidegrees)
 TEMP_SCALE = 100

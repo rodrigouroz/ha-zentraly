@@ -26,7 +26,7 @@ from homeassistant.helpers.update_coordinator import (
 
 from .api import ZentralyApi
 from .const import (
-    DEVICE_TYPE_THERMOSTAT,
+    DEVICE_TYPES_THERMOSTAT,
     DOMAIN,
     HVAC_MODE_MAP,
     HVAC_MODE_REVERSE,
@@ -50,7 +50,7 @@ async def async_setup_entry(
     entities = [
         ZentralyThermostat(coordinator, api, device)
         for device in devices
-        if device.get("device_type") == DEVICE_TYPE_THERMOSTAT
+        if device.get("device_type") in DEVICE_TYPES_THERMOSTAT
     ]
 
     async_add_entities(entities)
