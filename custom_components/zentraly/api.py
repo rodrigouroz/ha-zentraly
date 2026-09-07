@@ -35,6 +35,31 @@ from .const import (
 
 _LOGGER = logging.getLogger(__name__)
 
+# Enough of the server stack trace to name the failing constraint or exception.
+_STACK_EXCERPT_LENGTH = 300
+
+
+def _error_detail(payload: Any) -> str:
+    """Summarize an API error without echoing the whole response body.
+
+    Responses carry the session token, the user ID and device serials, and these
+    messages end up in the Home Assistant log, which users routinely paste into
+    bug reports. Keep the status, the server message and a short stack excerpt.
+    """
+    if not isinstance(payload, dict):
+        return "unexpected response"
+
+    io_data = payload.get("ioData")
+    if not isinstance(io_data, dict):
+        io_data = {}
+
+    parts = [f"numStatus={payload.get('numStatus')}"]
+    if message := io_data.get("ivstrMsg"):
+        parts.append(str(message))
+    if stack := io_data.get("ivstrStack"):
+        parts.append(" ".join(str(stack).split())[:_STACK_EXCERPT_LENGTH])
+    return " | ".join(parts)
+
 
 class ZentralyApiError(Exception):
     """Base exception for Zentraly API errors."""
@@ -149,7 +174,7 @@ class ZentralyApi:
             data = await response.json()
 
             if data.get("numStatus") != 0:
-                raise ZentralyAuthError(f"Authentication failed: {data}")
+                raise ZentralyAuthError(f"Authentication failed: {_error_detail(data)}")
 
             io_data = data.get("ioData", {})
             self._token = io_data.get("ivstrToken")
@@ -186,7 +211,7 @@ class ZentralyApi:
             data = await response.json()
 
             if data.get("numStatus") != 0:
-                raise ZentralyApiError(f"API error: {data}")
+                raise ZentralyApiError(f"API error: {_error_detail(data)}")
 
             return data
 
@@ -277,7 +302,7 @@ class ZentralyApi:
             result = await response.json()
 
             if result.get("numStatus") != 0:
-                raise ZentralyApiError(f"Command failed: {result}")
+                raise ZentralyApiError(f"Command failed: {_error_detail(result)}")
 
             # Parse the inner JSON response
             io_data = result.get("ioData", "{}")

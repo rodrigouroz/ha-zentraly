@@ -155,6 +155,25 @@ class ZentralyApiTests(unittest.IsolatedAsyncioTestCase):
                 const_module.CLIENT_MOBILE_MODEL, fields["ivstrUserMobileModel"]
             )
 
+    def test_error_detail_keeps_diagnosis_and_drops_the_session_token(self) -> None:
+        detail = api_module._error_detail({
+            "numStatus": 1,
+            "ioData": {
+                "ivstrToken": "session-token-that-must-not-leak",
+                "ivstrMsg": "Error en autentificacion de usuario.",
+                "ivstrStack": "SqlException: conflicted with the CHECK constraint\r\n"
+                              "\"CK_UserFBTokens_strUserFBToken_NoHaIn\".",
+            },
+        })
+
+        self.assertIn("numStatus=1", detail)
+        self.assertIn("Error en autentificacion de usuario.", detail)
+        self.assertIn("CK_UserFBTokens_strUserFBToken_NoHaIn", detail)
+        self.assertNotIn("session-token-that-must-not-leak", detail)
+
+    def test_error_detail_handles_a_non_dict_payload(self) -> None:
+        self.assertEqual("unexpected response", api_module._error_detail("boom"))
+
     def test_firebase_counter_increments_per_request(self) -> None:
         api = ZentralyApi()
 
