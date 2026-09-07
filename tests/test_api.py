@@ -148,7 +148,12 @@ class ZentralyApiTests(unittest.IsolatedAsyncioTestCase):
             fields = decode_firebase_header(request["headers"]["Firebase"])
             self.assertEqual(device_guid, fields["ivstrUserGuid"])
             self.assertEqual(device_guid, fields["ivstrUserFBToken"])
-            self.assertEqual("HomeAssistant", fields["ivstrUserMobileTrade"])
+            self.assertEqual(
+                const_module.CLIENT_MOBILE_TRADE, fields["ivstrUserMobileTrade"]
+            )
+            self.assertEqual(
+                const_module.CLIENT_MOBILE_MODEL, fields["ivstrUserMobileModel"]
+            )
 
     def test_firebase_counter_increments_per_request(self) -> None:
         api = ZentralyApi()
