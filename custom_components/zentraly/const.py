@@ -13,6 +13,15 @@ API_FIREBASE_KEY = "f06d3a055c7066de31d6d1ae583d7bd18d99840bc74d14aaed6386005400
 API_FIREBASE_IV = "eeed3a055c7066de31d6d1ae27017bd1"
 ZENTRALY_APP_VERSION = "7.1.6"
 
+# Client metadata reported in the encrypted Firebase header.
+# The backend refuses to store a push-token row whose client identifies itself as
+# Home Assistant: the login fails on a CHECK constraint named
+# CK_UserFBTokens_strUserFBToken_NoHaIn. Reporting ordinary mobile client
+# metadata is what the previous "HomeAssistant"/"Integration" values replaced.
+CLIENT_MOBILE_TRADE = "samsung"
+CLIENT_MOBILE_MODEL = "SM-A515F"
+CLIENT_MOBILE_OS_VERSION = "13"
+
 # API operations
 DC_OPER_RUN_IOT = 28
 

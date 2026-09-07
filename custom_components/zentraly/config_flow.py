@@ -61,7 +61,10 @@ class ZentralyConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                         CONF_DEVICE_GUID: device_guid,
                     },
                 )
-            except ZentralyAuthError:
+            except ZentralyAuthError as err:
+                # Without this the server's reason is discarded and debug
+                # logging shows nothing at all for a rejected login.
+                _LOGGER.debug("Zentraly rejected the login: %s", err)
                 errors["base"] = "invalid_auth"
             except Exception:
                 _LOGGER.exception("Unexpected error during Zentraly authentication")
